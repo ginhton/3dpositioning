@@ -5,10 +5,24 @@
 
 import socket
 import sys
+import json
 
+interval = 10
+MAX_DATA = 10
+datas = [None]*MAX_DATA
+cnt = 0
 
 def extractData(data):
-    return data[9:26], data[35:38]
+    return json.loads(data)
+
+
+def position(data):
+    datas[cnt] = data
+    cnt = (cnt + 1) % MAX_DATA
+    # get three point
+    # 3-d positioning
+
+
 
 
 if __name__ == '__main__':
@@ -25,4 +39,4 @@ if __name__ == '__main__':
     print('addr ', addr);
 
     while True:
-        print(extractData(c.recv(1024)))
+        position(extractData(c.recv(1024)))
