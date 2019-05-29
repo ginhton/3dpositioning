@@ -1,18 +1,28 @@
+#!/usr/bin/python
+# -*- coding:utf-8 -*-
+# socket server
+# extract data from client and show
+
 import socket
 import sys
 
-s = socket.socket()
-#; host = socket.gethostname()
-host = '0.0.0.0'
-port = int(sys.argv[1])
-s.bind((host, port))
 
-print(host, port)
+def extractData(data):
+    return data[9:26], data[35:38]
 
-s.listen(5)
-while True:
+
+if __name__ == '__main__':
+    s = socket.socket()
+    host = '0.0.0.0'
+    port = int(sys.argv[1])
+    s.bind((host, port))
+
+    print(host, port)
+
+    s.listen(5)
+
     c,addr = s.accept();
     print('addr ', addr);
-    c.send(b'hello world!')
-    print(c.recv(1024))
-    c.close()
+
+    while True:
+        print(extractData(c.recv(1024)))
