@@ -2,11 +2,14 @@
 # -*- coding:utf-8 -*-
 # socket server
 # extract data from client and show
+#
+# ./server.py PORT mode
 
 import socket
-import sys
-import json
 import math
+from sys import argv, exit
+from json import loads
+from datetime import datetime
 
 # parameters
 interval = 10
@@ -21,20 +24,22 @@ p1_y=2
 p2_x=2
 p2_y=1
 
-
 # global variables
 datas = []
 cnt = 0
 f = None
 
 
-
 def extractData(data):
-    return json.loads(data)
+    try:
+        json_obj = loads(data)
+    except ValueError:
+        return {"error":data}
+    return json_obj
 
 
 def dataCmp(a, b):
-    return a.rrsi / a['len'] > b['rssi'] / b['len']
+    return a['rrsi ']/ a['len'] > b['rssi'] / b['len']
 
 
 def rssi2Distance(rssi):
@@ -44,7 +49,7 @@ def rssi2Distance(rssi):
 
 
 # https://blog.csdn.net/qq_35651984/article/details/82633843
-def 3dAlgo(d0, d1, d2):
+def threeDAlgo(d0, d1, d2):
     a = p0_x-p2_x
     b = p0_y-p2_y
     c = math.pow(p0_x, 2) - math.pow(p2_x, 2) + math.pow(p0_y, 2) - math.pow(p2_y, 2) + math.pow(d2, 2) - math.pow(d0, 2)
@@ -59,9 +64,10 @@ def updateCoordinate():
     return
 
 
-def position(data):
+def positioning(data):
     found = 0
 
+    global cnt
     cnt = cnt + 1
     for item in datas:
         if item.addr == data.addr:
@@ -74,7 +80,7 @@ def position(data):
         data['len'] = 1
         datas.append(data)
 
-    if (cnt > 20 && len(datas) >= 3):
+    if (cnt > 20 and len(datas) >= 3):
         cnt = 0
 
         # get three point
@@ -94,17 +100,22 @@ def position(data):
         updateCoordinate()
 
         # 3-d positioning
-        print(3dAlgo(d0, d1, d2))
+        print(threeDAlgo(d0, d1, d2))
 
+        # clear all data
+        datas = []
+def generateFileName():
+    return str(datetime.now())+".txt"
 
 def openFile():
+    global f
     if f == None:
-        f = open(FILENAME, 'w')
+        f = open(generateFileName(), 'w')
 
 
 def record(data):
-    print('record rssi infos to files')
-    f.write(data)
+    print(data)
+    f.write(str(data)+'\n')
 
 
 def closeFile():
@@ -112,11 +123,19 @@ def closeFile():
         f.close()
 
 
+def extractjson(data):
+    if (len(data) < 50):
+        return [data]
+    else:
+        return data.decode('utf-8').replace('}{','}#{').split('#')
 
-if __name__ == '__main__':
+
+
+def socketRun(run):
+    # socket
     s = socket.socket()
     host = '0.0.0.0'
-    port = int(sys.argv[1])
+    port = int(argv[1])
     s.bind((host, port))
 
     print(host, port)
@@ -127,4 +146,31 @@ if __name__ == '__main__':
     print('addr ', addr)
 
     while True:
-        position(extractData(c.recv(1024)))
+        data = c.recv(1024)
+        collections = extractjson(data)
+
+        for item in collections:
+            run(extractData(item))
+
+
+
+
+if __name__ == '__main__':
+
+    if (len(argv) < 3):
+        print('\tusage: ./server.py port mode\n\tmode = realtime, for positioning realtime.\n\tmode = rec, for record data into file\n')
+        exit(0)
+
+    # file
+    mode = argv[2]
+
+
+    if (mode == 'rec'):
+        print('record rssi infos to files')
+        openFile()
+        socketRun(record)
+    elif (mode == 'realtime'):
+        socketRun(positioning)
+    else:
+        print('\tusage: ./server.py port mode\n\tmode = realtime, for positioning realtime.\n\tmode = rec, for record data into file\n')
+
