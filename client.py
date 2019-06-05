@@ -39,12 +39,15 @@ def socketRun(run):
     host  = 'localhost'
     port = int(sys.argv[1])
 
-    s.connect((host, port))
-    while True:
-        # run()
-        s.send(generateData())
-        time.sleep(sleep_interval)
-    s.close()
+    try:
+        s.connect((host, port))
+        while True:
+            # run()
+            s.send(generateData())
+            time.sleep(sleep_interval)
+    except socket.error:
+        if s:
+            s.close()
 
 
 if __name__ == '__main__':

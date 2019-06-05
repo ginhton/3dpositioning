@@ -8,6 +8,11 @@ anl: server.py
 
 show: server.py
 	./server.py 8070 show
+
+
+cli: client.py
+	./client.py 8070
+
 clr:
 	rm ./*.txt
 
