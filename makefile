@@ -6,6 +6,8 @@ rec: server.py
 anl: server.py
 	./server.py 8070 realtime
 
+show: server.py
+	./server.py 8070 show
 clr:
 	rm ./*.txt
 

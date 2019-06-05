@@ -24,11 +24,20 @@ p1_y=2
 p2_x=2
 p2_y=1
 
+
 # global variables
 datas = []
 cnt = 0
 f = None
+coords = {}
+addr1 = "d8:a0:1d:61:04:de"
+addr2 = "d8:a0:1d:60:fe:c6"
+addr3 = "d8:a0:1d:61:04:66"
 
+def initCoords():
+    coords[addr1] = {"x":0,"y":3}
+    coords[addr2] = {"x":-3,"y":0}
+    coords[addr3] = {"x":3,"y":0}
 
 def extractData(data):
     try:
@@ -43,7 +52,7 @@ def dataCmp(a, b):
 
 
 def rssi2Distance(rssi):
-    power = (math.abs(rssi)- 60)/(10.0 * 3.3)
+    power = (abs(rssi)- 60)/(10.0 * 3.3)
     distance = math.pow(10, power)
     return distance
 
@@ -60,7 +69,15 @@ def threeDAlgo(d0, d1, d2):
     y = (a*f-d*c)/(2*a*e-2*b*d)
     return x, y
 
-def updateCoordinate():
+def updateCoordinate(a0, a1, a2):
+    global x0, y0, x1, y1, x2, y2
+    x0 = coords[a0]['x']
+    y0 = coords[a0]['y']
+    x1 = coords[a1]['x']
+    y1 = coords[a1]['y']
+    x2 = coords[a2]['x']
+    y2 = coords[a2]['y']
+    print(x0, y0, x1, y1, x2, y2)
     return
 
 
@@ -68,11 +85,15 @@ def positioning(data):
     found = 0
 
     global cnt
+    global datas
     cnt = cnt + 1
+
+    data['rssi'] = int(data['rssi'])
+
     for item in datas:
-        if item.addr == data.addr:
+        if item['addr'] == data['addr']:
             found = 1
-            item['rssi ']= item['rssi ']+ data['rssi']
+            item['rssi']= item['rssi']+ data['rssi']
             item['len'] = item['len'] + 1
             break
 
@@ -97,7 +118,7 @@ def positioning(data):
         d2 = rssi2Distance(rssi2)
 
         # get coordinate
-        updateCoordinate()
+        updateCoordinate(datas[0]['addr'], datas[1]['addr'], datas[2]['addr'])
 
         # 3-d positioning
         print(threeDAlgo(d0, d1, d2))
@@ -136,6 +157,9 @@ def socketRun(run):
     s = socket.socket()
     host = '0.0.0.0'
     port = int(argv[1])
+
+    s.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
+
     s.bind((host, port))
 
     print(host, port)
@@ -152,6 +176,9 @@ def socketRun(run):
         for item in collections:
             run(extractData(item))
 
+
+def show(data):
+    print(data)
 
 
 
@@ -170,7 +197,10 @@ if __name__ == '__main__':
         openFile()
         socketRun(record)
     elif (mode == 'realtime'):
+        initCoords()
         socketRun(positioning)
+    elif (mode == 'show'):
+        socketRun(show)
     else:
         print('\tusage: ./server.py port mode\n\tmode = realtime, for positioning realtime.\n\tmode = rec, for record data into file\n')
 
