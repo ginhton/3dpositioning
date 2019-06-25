@@ -2,7 +2,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import time
 from collections import deque
+import math
 
+A = 48.8
+n = 1.56
+txPower = A
 
 
 # remove abnormal data, which apears as a jump in freq.
@@ -65,6 +69,7 @@ class rssiFilterIMA:
 
 
 def rssi2DistanceGithub(rssi):
+    txPower = 48.8
     if (rssi == 0):
         return -1.0; # if we cannot determine accuracy, return -1.
 
@@ -76,6 +81,8 @@ def rssi2DistanceGithub(rssi):
         return accuracy
 
 def rssi2DistanceCSDN(rssi):
+    A = 48.8
+    n = 15.6
     power = (abs(rssi)- A)/(10.0 * n)
     distance = math.pow(10, power)
     return distance
