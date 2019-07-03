@@ -9,29 +9,9 @@ n = 1.56
 txPower = A
 
 
-# remove abnormal data, which apears as a jump in freq.
-def rssiFilter(threshold):
-    prev = False
-
-    def setPrev(avg):
-        prev = avg
-
-    def check(rssi):
-        if prev == False:
-            return True
-        if abs(rssi - avg) > threshold:
-            return False
-        return True
-
-    return check
 # 滑动防脉冲干扰平均滤波法
 class rssiFilterIMA:
     def __init__(self, window=10):
-        # self.chMinVal = None
-        # self.chMaxVal = None
-        # self.chTemp = None
-        # self.nCnt = None
-        # self.nSum = 0
         self.chIsFull = False
         self.chIx = 0
         self.achBuf = [None]*window
@@ -71,11 +51,11 @@ class rssiFilterIMA:
 def rssi2DistanceGithub(rssi):
     txPower = 48.8
     if (rssi == 0):
-        return -1.0; # if we cannot determine accuracy, return -1.
+        return -1.0 # if we cannot determine accuracy, return -1.
 
-    ratio = rssi*1.0/txPower;
+    ratio = rssi*1.0/txPower
     if (ratio < 1.0):
-        return math.pow(ratio,10);
+        return math.pow(ratio,10)
     else:
         accuracy = (0.89976)*math.pow(ratio,7.7095) + 0.111
         return accuracy
@@ -153,10 +133,52 @@ class CatchRssi:
         # time.sleep(0.01)
         plt.pause(0.0001)
 
-    def setAddr(addr):
-        self.addr = addr
 
+class CatchRssis:
+    def __init__(self, window=10):
+        self.cache = {}
 
+        self.fig = None
+        self.ax = None
 
+        self.window = window
+        self.rfilter = None
 
+        self.POINTS = 60
+    def prepare(self):
+        self.rfilter = rssiFilterIMA(self.window)
+        self.preparePlot()
 
+    def preparePlot(self):
+        self.fig, self.ax = plt.subplots()
+        plt.ion()
+        self.ax.set_ylim([-90,-30])
+        plt.show()
+
+    def run(self, data):
+        if not 'addr' in data:
+            print('corrputed data')
+            return
+        addr = data['addr']
+        if not addr in self.cache:
+            self.cache[addr] = {}
+            self.cache[addr]['rssi'] = [0] * self.POINTS
+            self.cache[addr]['plot'], = self.ax.plot(range(self.POINTS), self.cache[addr]['rssi'], label= '%s' % addr[-2:])
+            self.ax.figure.canvas.draw()
+
+        rssi = int(data['rssi'])
+        # avg = self.rfilter.check(rssi)
+        # avg = self.rfilter.check(rssi)
+        self.cache[addr]['rssi'] = self.cache[addr]['rssi'][1:] + [rssi]
+        self.cache[addr]['plot'].set_ydata(self.cache[addr]['rssi'])
+        self.ax.draw_artist(self.cache[addr]['plot'])
+        self.draw()
+
+    # draw average rssi
+    def draw(self):
+        # self.cache[addr]['plot'].set_ydata(self.cache[addr]['rssi'])
+        # self.ax.draw_artist(self.cache[addr]['plot'])
+        self.ax.figure.canvas.draw()
+        # plt.draw()
+        # time.sleep(0.01)
+        plt.pause(0.0001)

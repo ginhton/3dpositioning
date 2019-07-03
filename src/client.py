@@ -19,7 +19,12 @@ from json import loads
 f = None
 # filename = '2019-06-07_11:05:09/2019-06-04 16:32:36.754252.txt'
 # filename = '2019-06-10_20:52:37_00_00_03/2019-06-10 20:32:21.177455.txt'
-filename = '../data/2019-06-19_10:55:14_5m/2019-06-19 10:31:43.975761.txt'
+# only receive rssi from one addr *c6*
+# filename = '../data/2019-06-19_10:55:14_5m/2019-06-19 10:31:43.975761.txt'
+
+# receive rssi from three addresses
+filename = '../data/2019-06-07_11:05:09/2019-06-07 11:01:23.517382.txt'
+# filename = '../data/2019-06-07_11:05:09/2019-06-04 16:31:27.423604'
 sleep_interval = 0.03
 
 def openFile(filename):

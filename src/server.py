@@ -15,7 +15,7 @@ from json import loads
 from datetime import datetime
 from multiprocessing import Process, Manager
 
-from utils import CatchRssi, rssi2DistanceCSDN, rssi2DistanceGithub, rssiFilter
+from utils import CatchRssi, rssi2DistanceCSDN, rssi2DistanceGithub, CatchRssis
 
 
 # parameters
@@ -194,9 +194,6 @@ def socketRun(run):
     c,addr = s.accept()
     print('addr ', addr)
 
-    # if FILTER_ON:
-    #     rfilter = rssiFilter(FILTER_THRESHOLD)
-
     while True:
         try:
             data = c.recv(1024)
@@ -209,8 +206,6 @@ def socketRun(run):
                     continue
                 if not tmp.__contains__("rssi"):
                     continue
-                # if FILTER_ON:
-                    # rfilter.check(int(data["rssi"]))
 
                 run(tmp)
 
@@ -279,7 +274,8 @@ def main():
         socketRun(show)
     elif (mode == 'rssi'):
         adr = "d8:a0:1d:60:fe:c6"
-        c = CatchRssi(10, adr)
+        # c = CatchRssi(10, adr)
+        c = CatchRssis(10)
         c.prepare()
         socketRun(c.run)
     else:
