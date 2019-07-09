@@ -12,7 +12,7 @@ from json import loads
 f = None
 
 # receive rssi from three addresses
-filename = '../data/2019-06-07_11:05:09/2019-06-07 11:01:23.517382.txt'
+filename = '../data/experiment1/2019-06-07_11:05:09/2019-06-07 11:01:23.517382.txt'
 
 sleep_interval = 0.03
 

@@ -34,7 +34,8 @@ class WCLSimple:
         Y = Y / S
 
         print(X, Y)
-        return (X, Y)
+        return {"X": X, "Y": Y}
+
 
 
 class WCLWindow:
@@ -99,7 +100,8 @@ class WCLWindow:
             self.cnt = 0
 
             print(X, Y)
-            return (X, Y)
+            return {"X": X, "Y": Y}
+
         else:
 
             return None
@@ -107,23 +109,33 @@ class WCLWindow:
 
 # when get *number* of rssi for each addr, generate an output
 class WCLN:
+
     def __init__(self, number=2):
+
         self.cache = {}
         self.number = number
 
     def add(self, addr, coords):
+
         if addr not in self.cache:
+
             self.cache[addr] = {'rssi': [], 'coords':coords}
             return True
+
         return False
 
     def update(self, data):
+
         obj = data
+
         if 'error' in obj:
+
             return None
 
         addr = obj['addr']
+
         if addr not in self.cache:
+
             print("%s not in cache" % addr)
             return None
 
@@ -131,17 +143,25 @@ class WCLN:
         self.cache[addr]['rssi'].append(rssi)
 
         check = False
+
         for addr in self.cache:
+
             if (len(self.cache[addr]['rssi']) >= self.number):
+
                 check = True
+
             else:
+
                 check = False
                 break
 
         if (check):
+
             X, Y = 0, 0
             S = 0
+
             for addr in self.cache:
+
                 avg = sum(self.cache[addr]['rssi']) / len(self.cache[addr]['rssi'])
                 X += avg * self.cache[addr]['coords']['x']
                 Y += avg * self.cache[addr]['coords']['y']
@@ -152,37 +172,49 @@ class WCLN:
             Y = Y / S
 
             print(X, Y)
-            return (X, Y)
+            return {"X":X, "Y":Y}
+
         else:
+
             return None
 
 
 
 class TriangulatorN:
+
     def __init__(self, number = 10):
+
         self.cache = {}
         self.number = number
 
     # need to just add 3 points
     def add(self, addr, coords):
+
         if addr not in self.cache:
+
             self.cache[addr] = {'rssi': [], 'coords':coords}
             return True
+
         return False
 
     def update(self, data):
 
         # need 3 addr and their coodinates
         if (len(self.cache.keys()) < 3):
+
             print('add more address and coords')
             return None
 
         obj = data
+
         if 'error' in obj:
+
             return None
 
         addr = obj['addr']
+
         if addr not in self.cache:
+
             print("%s not in cache" % addr)
             return None
 
@@ -190,28 +222,39 @@ class TriangulatorN:
         self.cache[addr]['rssi'].append(rssi)
 
         check = False
+
         for addr in self.cache:
+
             if (len(self.cache[addr]['rssi']) >= self.number):
+
                 check = True
+
             else:
+
                 check = False
                 break
 
         if (check):
+
             d = []
+
             for addr in self.cache:
+
                 avg = sum(self.cache[addr]['rssi']) / len(self.cache[addr]['rssi'])
                 d.append({"distance": rssi2DistanceCSDN(avg), "addr": addr})
                 self.cache[addr]['rssi'] = []
 
             X, Y = self.triangulate(d)
             print(X, Y)
-            return (X, Y)
+            return {"X": X, "Y": Y}
+
         else:
+
             return None
 
     # https://blog.csdn.net/qq_35651984/article/details/82633843
     def triangulate(self, d):
+
         d0 = d[0]['distance']
         d1 = d[1]['distance']
         d2 = d[2]['distance']

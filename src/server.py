@@ -14,7 +14,7 @@ from sys import argv, exit
 from json import loads
 from datetime import datetime
 
-from utils import CatchRssi, CatchRssis, FilterWrap, KalmanFilter
+from utils import CatchRssi, CatchRssis, KalmanFilter, AddrChecker, TaskQueue
 from positioning import WCLSimple, WCLN, WCLWindow, TriangulatorN
 
 
@@ -25,49 +25,74 @@ f = None
 
 # data processing
 def extractData(data):
+
+    json_obj = None
+
     try:
+
         json_obj = loads(data)
+
+        if not json_obj.__contains__("addr"):
+
+            return None
+
+        if not json_obj.__contains__("rssi"):
+
+            return None
+
+        json_obj['rssi'] = int(json_obj['rssi'])
+
     except ValueError:
-        return {"error":data}
+
+        return None
+
     return json_obj
 
 
 def extractjson(data):
+
     if (len(data) < 50):
+
         return [data]
+
     else:
+
         return data.decode('utf-8').replace('}{','}#{').split('#')
 
 
 # file processing
 def generateFileName():
+
     return str(datetime.now())+".txt"
 
 
 def openFile():
+
     global FILENAME
     global f
+
     if f == None:
+
         FILENAME=generateFileName()
         f = open(FILENAME, 'w')
 
 
 def record(data):
+
     print(data)
     f.write(str(data)+'\n')
 
 
 def closeFile():
+
     if f != None:
+
         f.close()
-
-
-
 
 
 # framework
 def socketRun(run):
-    # socket
+
     s = socket.socket()
     host = '0.0.0.0'
     port = int(argv[1])
@@ -84,48 +109,36 @@ def socketRun(run):
     print('addr ', addr)
 
     while True:
+
         try:
+
             data = c.recv(1024)
 
             collections = extractjson(data)
 
             for item in collections:
-                tmp = extractData(item)
-                if not tmp.__contains__("addr"):
-                    continue
-                if not tmp.__contains__("rssi"):
+
+                json_obj = extractData(item)
+
+                if json_obj == None:
+
                     continue
 
-                run(tmp)
+                run(json_obj)
 
         except KeyboardInterrupt:
+
                 try:
+
                     if c:
                         c.close()
+
                     s.close()
                     exit(0)
+
                 except: pass
+
                 break
-
-# draw graph
-def draw(d):
-    fig, ax = plt.subplots()
-    ax.set_xlim([-6,6])
-    ax.set_ylim([-6,6])
-
-    dot, = ax.plot([], [], 'o', color='red')
-
-    def dots(i):
-        print(d)
-        dot.set_data(d["x"], d["y"])
-
-    ani = animation.FuncAnimation(fig, dots, interval=500, repeat=False)
-    plt.grid()
-    plt.grid(color='b', linewidth='0.5', linestyle='--')
-
-    # ani.save(FILENAME+'.mp4', fps=30, extra_args=['-vcodec', 'libx264'])
-
-    plt.show()
 
 
 def show(data):
@@ -149,21 +162,22 @@ def main():
         openFile()
         socketRun(record)
 
-    elif (mode == 'wrap'):
+    elif (mode == 'task'):
 
-        wrap = FilterWrap()
+        task_queue = TaskQueue()
+        addr_checker = AddrChecker(KalmanFilter)
 
-        f = KalmanFilter()
-        wrap.addfilter(f)
+        task_queue.append(addr_checker)
 
-        x = TriangulatorN()
-        # x = WCLSimple()
-        x.add('d8:a0:1d:60:fe:c6', {"x":-3, "y":0})
-        x.add('d8:a0:1d:61:04:de', {"x":0, "y":3})
-        x.add('d8:a0:1d:61:04:66', {"x":3, "y":0})
-        wrap.addpositioning(x)
+        pos = TriangulatorN()
+        # pos = WCLSimple()
+        pos.add('d8:a0:1d:60:fe:c6', {"x":-3, "y":0})
+        pos.add('d8:a0:1d:61:04:de', {"x":0, "y":3})
+        pos.add('d8:a0:1d:61:04:66', {"x":3, "y":0})
 
-        socketRun(wrap.update)
+        task_queue.append(pos)
+
+        socketRun(task_queue.update)
 
     elif (mode == 'triangulator'):
 
@@ -194,6 +208,31 @@ def main():
         c = CatchRssis(10)
         c.prepare()
         socketRun(c.run)
+
+    elif (mode == 'test'):
+
+        kalman_filter = KalmanFilter()
+        values = []
+
+        def test_kalman_filter(data):
+
+            rssi = int(data['rssi'])
+            val = kalman_filter.update(rssi)
+            values.append(val)
+            # print(len(values))
+            print(val)
+
+            # if (len(values) >= 40):
+
+            #     values = values[1:]
+
+            plt.plot(values, color='r')
+            plt.pause(0.05)
+
+        plt.show()
+
+        socketRun(test_kalman_filter)
+
 
     else:
 

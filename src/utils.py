@@ -34,13 +34,11 @@ def file2rssis(path):
     for line in f:
 
         rssi = int(eval(line)['rssi'])
-        if (abfilter.update(rssi)):
+        filtered_rssi = abfilter.update(rssi)
 
-            result['rssi'].append(rssi)
+        if (filtered_rssi != None):
 
-        else:
-
-            print(rssi)
+            result['rssi'].append(filtered_rssi)
 
     return result
 
@@ -57,6 +55,69 @@ def parseJSON(data):
         return {"error":data}
 
     return json_obj
+
+
+
+class AddrChecker:
+
+    def __init__(self, handler):
+
+        self.cache = {}
+        self.handler = handler
+
+    def update(self, json_obj):
+
+        addr = json_obj['addr']
+        rssi = json_obj['rssi']
+
+        if addr not in self.cache:
+
+            self.cache[addr] = self.handler()
+
+        rssi  = self.cache[addr].update(rssi)
+
+        if rssi == None:
+
+            return None
+
+        json_obj['rssi'] = rssi
+
+        print(json_obj)
+
+        return json_obj
+
+
+
+# a task has a update method
+# it read a json_obj, and generate a json_obj or None
+class TaskQueue:
+
+    def __init__(self):
+
+        self.queue = []
+
+    def append(self, task):
+
+        self.queue.append(task)
+
+
+    def update(self, json_obj):
+
+        if len(self.queue) == 0:
+
+            return None
+
+        ret_json_obj = json_obj
+
+        for task in self.queue:
+
+            ret_json_obj = task.update(ret_json_obj)
+
+            if ret_json_obj == None:
+
+                break
+
+        return ret_json_obj
 
 
 
@@ -141,7 +202,8 @@ class AbnormalValFilter:
 
             if abs(rssi - self.prev) >= self.threshold:
 
-                return None
+                print('abnormal rssi %d' % rssi)
+                return self.prev
 
             else:
 
@@ -152,7 +214,7 @@ class AbnormalValFilter:
 class KalmanFilter:
 
     # p = 7.8, or 21, or 39
-    def __init__(self, init_x=-40, init_p=7.8, r=0.1**2, q=1e-5):
+    def __init__(self, init_x=None, init_p=7.8, r=0.1**2, q=1e-5):
 
         self.x = init_x
         self.p = init_p
@@ -164,6 +226,11 @@ class KalmanFilter:
         if rssi == None:
 
             return None
+
+        if self.x == None:
+
+            self.x = rssi
+            return
 
         result = self.x
         self.p = self.p + self.q

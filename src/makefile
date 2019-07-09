@@ -6,8 +6,8 @@ rec: server.py
 rec190: server.py
 	timeout --signal=SIGINT 190s ./server.py 8070 rec
 
-wrap: server.py
-	./server.py 8070 wrap
+task: server.py
+	./server.py 8070 task
 
 tri: server.py
 	./server.py 8070 triangulator
