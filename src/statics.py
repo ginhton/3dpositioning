@@ -6,90 +6,92 @@
 # ./statics.py folder_of_data
 
 import math
-import signal
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
-import matplotlib.animation as animation
+from scipy import stats
+
 from sys import argv, exit
-from json import loads, dump
 from datetime import datetime
 from os import listdir
 from os.path import isfile, join, isdir
-from scipy import stats
+
 from utils import file2rssis
 
-# parameters
-# filename = './2019-06-07_11:12:03_66/2019-06-07 11:05:25.982751.txt'
-# dirname = '2019-06-07_11:12:03_66'
 
-# dirnames for experiment-2
-# dirnames = [
-#     '2019-06-07_11:12:03_66',
-#     '2019-06-07_11:25:51_de',
-#     '2019-06-07_11:28:13_c6'
-# ]
+class AnalyzeRssi:
 
-# dirnames for experiment-2 extra experiment
-# rssi of 1m distance
-dirnames = [
-    # '2019-06-07_19:58:24_66_de_c6_1mx3'
-    '../data/expriment7'
-]
-f = None
-L = []
+    def __init__(self):
 
-def openFile(filename):
-    global f, L
-    f = None
-    L = []
-    if not f:
-        f = open(filename, 'r')
-    for line in f:
-        # modify later, cuz there are 3-dit rssi
-        # print(line)
-        # print(line[39:42])
-        rssi = int(line[39:42])
-        L.append(rssi)
-
-def draw(txt):
-    fig = plt.figure()
-    plt.hist(L, bins=50)
-    fig.savefig(txt+".png")
-    avg =  np.mean(L)
-    mode = stats.mode(L)[0][0]
-    s = txt+ " mean--> "+ str(avg)+ " mode--> "+ str(mode)
-    print(s)
-    plt.title(s)
-    plt.show()
+        self._cache = None
 
 
-def getdirs(dirname):
-    def joindirs(dirs):
-        return join(dirname, dirs)
+    def analyze_file(self, filename):
 
-    dirnames = listdir(dirname)
-    return map(joindirs, dirnames)
+        if (isfile(filename) and filename.endswith(".txt")):
+
+            self._cache = file2rssis(filename)['rssi']
+            self._draw(filename)
+
+
+    def analyze_directory(self, directory):
+
+        if isdir(directory):
+
+            onlyfiles = [join(directory, filename) for filename in listdir(directory) if isfile(join(directory, filename)) and filename.endswith(".txt")]
+            sorted_files = sorted(onlyfiles)
+
+            for filename in sorted_files:
+
+                self.analyze_file(filename)
+
+
+    def analyze_experiment(self, directory):
+
+        if isdir(directory):
+
+            for item in listdir(directory):
+
+                joined_direcory = join(directory, item)
+                self.analyze_directory(joined_direcory)
+
+
+    def _draw(self, filename, save=False):
+
+        avg = round(np.mean(self._cache),2)
+        mode = round(stats.mode(self._cache)[0][0], 2)
+        cov = round(self._convariance(self._cache), 2)
+        title = '-'.join(map(str, [filename, avg, mode, cov]))
+
+        print('filename-mean-mode-cov')
+        print(title)
+
+        fig = plt.figure()
+        plt.hist(self._cache, bins=50)
+        plt.title(title)
+        plt.show()
+
+        if save:
+
+            fig.savefig(title+".png")
+
+
+    def _convariance(self, data):
+
+        return np.cov(data)
+
 
 
 def main():
-    if (len(argv) == 2):
-        global dirnames
-        # dirnames = [ argv[1] ]
-        dirnames = getdirs('../data/experiment7')
-    for dirname in dirnames:
-        onlyfiles = [join(dirname, ff) for ff in listdir(dirname) if isfile(join(dirname, ff)) and ff.endswith(".txt") ]
-        # print(onlyfiles)
-        o = sorted(onlyfiles)
-        for txt in o:
-            openFile(txt)
-            draw(txt)
+
+    _x = AnalyzeRssi()
+    _x.analyze_experiment('../data/experiment7')
 
 
-def boxandwhisker(data):
+def box_and_whisker(data):
+
     plt.style.use("ggplot")
     plt.rcParams['axes.unicode_minus'] = False
-    # plt.rcParams['font.sans-serif']=['SimHei']
 
     df = pd.DataFrame()
     df['data'] = data['rssi']
@@ -97,25 +99,17 @@ def boxandwhisker(data):
     df.boxplot()
     plt.show()
 
-def drawbox(path):
-    data = file2rssis(path)
+
+def draw_box(filename):
+
+    data = file2rssis(filename)
+
     if len(data['rssi']) > 0:
-        print(data)
-        boxandwhisker(data)
 
-def convariance(data):
-    return np.cov(data['rssi'])
+        box_and_whisker(data)
 
-    # return 'hi'
 
 if __name__ == '__main__':
-    # main()
-    # drawbox("/home/i/my/temp/3dpositioning/data/2019-06-25_15:36:37_0.5m_8m/2019-06-24 09:33:10.109766.txt")
-    # drawbox("/home/i/my/temp/3dpositioning/data/2019-06-25_15:36:37_0.5m_8m/2019-06-24 09:45:02.081323.txt")
-    # p = "/home/i/my/temp/3dpositioning/data/2019-06-25_15:36:37_0.5m_8m/2019-06-24 09:45:02.081323.txt"
-    # dir = "/home/i/my/temp/3dpositioning/data/2019-06-25_15:36:37_0.5m_8m/"
-    # dir = "/home/i/my/temp/3dpositioning/data/2019-06-07_19:58:24_66_de_c6_1mx3"
-    dir = "/home/i/my/temp/3dpositioning/data/2019-06-19_10:55:14_5m"
 
-    for p in listdir(dir):
-        print(convariance(file2rssis(join(dir, p))))
+    main()
+
