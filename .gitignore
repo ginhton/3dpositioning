@@ -1,6 +1,4 @@
-/test.py
 /record.txt
-/2019*
-/66_de_c6_1mx3.tar
-/img
 /src/__pycache__
+/src/test*.py
+/img

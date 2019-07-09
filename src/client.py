@@ -23,7 +23,9 @@ f = None
 # filename = '../data/2019-06-19_10:55:14_5m/2019-06-19 10:31:43.975761.txt'
 
 # receive rssi from three addresses
-filename = '../data/2019-06-07_11:05:09/2019-06-07 11:01:23.517382.txt'
+# filename = '../data/2019-06-07_11:05:09/2019-06-07 11:01:23.517382.txt'
+filename = '/home/i/my/temp/3dpositioning/data/2019-06-07_11:05:09/2019-06-07 11:01:23.517382.txt'
+
 # filename = '../data/2019-06-07_11:05:09/2019-06-04 16:31:27.423604'
 sleep_interval = 0.03
 

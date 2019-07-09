@@ -6,8 +6,14 @@ rec: server.py
 rec190: server.py
 	timeout --signal=SIGINT 190s ./server.py 8070 rec
 
-anl: server.py
-	./server.py 8070 realtime
+wrap: server.py
+	./server.py 8070 wrap
+
+tri: server.py
+	./server.py 8070 triangulator
+
+WCLSimple: server.py
+	./server.py 8070 WCLSimple
 
 show: server.py
 	./server.py 8070 show
@@ -20,9 +26,9 @@ cli: client.py
 
 stat: statics.py
 	./statics.py ../data/expriment7
-	
+
 test: test.py
-	./test.py
+	python ./test.py
 
 rm-quot: *.txt
 	sed -i.bak "s/'/\"/g" *.txt

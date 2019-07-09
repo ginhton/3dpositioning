@@ -9,13 +9,15 @@ import math
 import signal
 import numpy as np
 import matplotlib.pyplot as plt
+import pandas as pd
 import matplotlib.animation as animation
 from sys import argv, exit
-from json import loads
+from json import loads, dump
 from datetime import datetime
 from os import listdir
 from os.path import isfile, join, isdir
 from scipy import stats
+from utils import file2rssis
 
 # parameters
 # filename = './2019-06-07_11:12:03_66/2019-06-07 11:05:25.982751.txt'
@@ -84,5 +86,36 @@ def main():
             draw(txt)
 
 
+def boxandwhisker(data):
+    plt.style.use("ggplot")
+    plt.rcParams['axes.unicode_minus'] = False
+    # plt.rcParams['font.sans-serif']=['SimHei']
+
+    df = pd.DataFrame()
+    df['data'] = data['rssi']
+
+    df.boxplot()
+    plt.show()
+
+def drawbox(path):
+    data = file2rssis(path)
+    if len(data['rssi']) > 0:
+        print(data)
+        boxandwhisker(data)
+
+def convariance(data):
+    return np.cov(data['rssi'])
+
+    # return 'hi'
+
 if __name__ == '__main__':
-    main()
+    # main()
+    # drawbox("/home/i/my/temp/3dpositioning/data/2019-06-25_15:36:37_0.5m_8m/2019-06-24 09:33:10.109766.txt")
+    # drawbox("/home/i/my/temp/3dpositioning/data/2019-06-25_15:36:37_0.5m_8m/2019-06-24 09:45:02.081323.txt")
+    # p = "/home/i/my/temp/3dpositioning/data/2019-06-25_15:36:37_0.5m_8m/2019-06-24 09:45:02.081323.txt"
+    # dir = "/home/i/my/temp/3dpositioning/data/2019-06-25_15:36:37_0.5m_8m/"
+    # dir = "/home/i/my/temp/3dpositioning/data/2019-06-07_19:58:24_66_de_c6_1mx3"
+    dir = "/home/i/my/temp/3dpositioning/data/2019-06-19_10:55:14_5m"
+
+    for p in listdir(dir):
+        print(convariance(file2rssis(join(dir, p))))
