@@ -5,6 +5,7 @@ from collections import deque
 import math
 from json import loads
 from os.path import isfile
+import socket
 
 A = 48.8
 n = 1.56
@@ -57,6 +58,42 @@ def parseJSON(data):
     return json_obj
 
 
+# data processing
+def extractData(data):
+
+    json_obj = None
+
+    try:
+
+        json_obj = loads(data)
+
+        if not json_obj.__contains__("addr"):
+
+            return None
+
+        if not json_obj.__contains__("rssi"):
+
+            return None
+
+        json_obj['rssi'] = int(json_obj['rssi'])
+
+    except ValueError:
+
+        return None
+
+    return json_obj
+
+
+def extractjson(data):
+
+    if (len(data) < 50):
+
+        return [data]
+
+    else:
+
+        return data.decode('utf-8').replace('}{','}#{').split('#')
+
 
 class AddrChecker:
 
@@ -68,23 +105,18 @@ class AddrChecker:
     def update(self, json_obj):
 
         addr = json_obj['addr']
-        rssi = json_obj['rssi']
 
         if addr not in self.cache:
 
             self.cache[addr] = self.handler()
 
-        rssi  = self.cache[addr].update(rssi)
+        ret_json_obj  = self.cache[addr].update(json_obj)
 
-        if rssi == None:
+        if ret_json_obj == None:
 
             return None
 
-        json_obj['rssi'] = rssi
-
-        print(json_obj)
-
-        return json_obj
+        return ret_json_obj
 
 
 
@@ -120,7 +152,6 @@ class TaskQueue:
         return ret_json_obj
 
 
-
 class FilterWrap:
 
     def __init__(self):
@@ -138,7 +169,7 @@ class FilterWrap:
 
     def update(self, data):
 
-        rssi = int(data['rssi'])
+        rssi = data['rssi']
         rssi = self.filter.update(rssi)
 
         if rssi == None:
@@ -221,11 +252,13 @@ class KalmanFilter:
         self.r = r # estimate of measure convariance
         self.q = q # process convariance
 
-    def update(self, rssi):
+    def update(self, json_obj):
 
-        if rssi == None:
+        if not json_obj.__contains__('rssi'):
 
             return None
+
+        rssi = json_obj['rssi']
 
         if self.x == None:
 
@@ -234,12 +267,14 @@ class KalmanFilter:
 
         result = self.x
         self.p = self.p + self.q
-
         k = self.p / (self.p + self.r)
         self.x = result + k*(rssi - result)
         self.p = (1-k)*self.p
 
-        return result
+        json_obj['rssi'] = result
+
+        return json_obj
+
 
 # 滑动防脉冲干扰平均滤波法
 class RssiFilterIMA:
@@ -297,9 +332,26 @@ class RssiFilterIMA:
         return nSum
 
 
+
+class GetDistance:
+
+    def __init__(self):
+
+        pass
+
+    def update(self, json_obj):
+
+        rssi = json_obj["rssi"]
+        distance = rssi2DistanceGithub(rssi)
+        json_obj["distance"] = distance
+
+        return json_obj
+
+
 def rssi2DistanceGithub(rssi):
 
-    txPower = 48.8
+    # txPower = 48.8
+    txPower = -59
 
     if (rssi == 0):
 
@@ -319,8 +371,9 @@ def rssi2DistanceGithub(rssi):
 
 def rssi2DistanceCSDN(rssi):
 
-    A = 48.8
-    n = 15.6
+    #  A=52.752230, n=2.817835
+    A = 52.752230
+    n = 2.817835
 
     power = (abs(rssi)- A)/(10.0 * n)
     distance = math.pow(10, power)
@@ -405,7 +458,8 @@ class CatchRssis:
 
     def prepare(self):
 
-        self.rfilter = rssiFilterIMA(self.window)
+        # self.rfilter = RssiFilterIMA(self.window)
+        # self.rfilter = KalmanFilter()
         self.preparePlot()
 
     def preparePlot(self):
@@ -420,7 +474,7 @@ class CatchRssis:
         if not 'addr' in data:
 
             print('corrputed data')
-            return
+            return None
 
         addr = data['addr']
 
@@ -429,10 +483,17 @@ class CatchRssis:
             self.cache[addr] = {}
             self.cache[addr]['rssi'] = [0] * self.POINTS
             self.cache[addr]['plot'], = self.ax.plot(range(self.POINTS), self.cache[addr]['rssi'], label= '%s' % addr[-2:])
+            self.cache[addr]['filter'] = KalmanFilter()
             self.ax.figure.canvas.draw()
 
-        rssi = int(data['rssi'])
         # avg = self.rfilter.update(rssi)
+        print(data)
+        fdata = self.cache[addr]['filter'].update(data)
+
+        if fdata == None:
+            return None
+
+        rssi = fdata['rssi']
         self.cache[addr]['rssi'] = self.cache[addr]['rssi'][1:] + [rssi]
         self.cache[addr]['plot'].set_ydata(self.cache[addr]['rssi'])
         self.ax.draw_artist(self.cache[addr]['plot'])
@@ -445,4 +506,185 @@ class CatchRssis:
         plt.pause(0.0001)
 
 
+class DrawRSSI:
+
+    def __init__(self, length = 50, ylim_min=-90, ylim_max=-30):
+
+        self.length = length
+        self.cache = [-40] * length
+
+        self.ax = None
+
+        _, self.ax = plt.subplots()
+
+        plt.ion()
+        self.ax.set_ylim([ylim_min, ylim_max])
+        plt.show()
+        self.plot, = self.ax.plot(range(length), self.cache, '-', label='rssi')
+        self.ax.figure.canvas.draw()
+
+    def update(self, rssi):
+
+        self.cache = self.cache[1:] + [rssi]
+        self.plot.set_ydata(self.cache)
+        self.ax.draw_artist(self.plot)
+        self.ax.figure.canvas.draw()
+        plt.pause(0.0001)
+
+
+class DrawSingle:
+
+    def __init__(self, length=50, ylim_min=-90, ylim_max=-30, key='rssi'):
+
+        self.length = length
+        self.cache = [-40] * length
+        self._key = key
+
+        self.ax = None
+
+        _, self.ax = plt.subplots()
+
+        plt.ion()
+        self.ax.set_ylim([ylim_min, ylim_max])
+        plt.show()
+        self.plot, = self.ax.plot(range(length), self.cache, '-', label='rssi')
+        self.ax.figure.canvas.draw()
+
+
+        self._tmp = []
+
+    def update(self, json_obj):
+
+        if not json_obj.__contains__(self._key):
+
+            return None
+
+        if (len(self._tmp) < 10):
+
+            self._tmp.append(json_obj[self._key])
+            return json_obj
+
+        data = json_obj[self._key]
+        self.cache = self.cache[10:] + self._tmp
+        self.plot.set_ydata(self.cache)
+        self.ax.draw_artist(self.plot)
+        self.ax.figure.canvas.draw()
+        plt.pause(0.0001)
+        self._tmp = []
+        return json_obj
+
+
+class GetRSSI:
+
+    def __init__(self, update):
+
+        self._update = update
+        pass
+
+    def update(self, json_obj):
+
+        if (json_obj == None) or ('rssi' not in json_obj):
+
+            return
+
+        self._update(json_obj['rssi'])
+
+
+class DrawCoordinate:
+
+    def __init__(self, length = 50):
+
+        self.length = length
+        self.cache = {"X": 0, "Y":0}
+
+        self.ax = None
+
+        _, self.ax = plt.subplots()
+
+        plt.ion()
+        self.ax.set_ylim([-5, 5])
+        self.ax.set_xlim([-5, 5])
+        plt.xticks(np.arange(-5, 5, step=0.5))
+        plt.yticks(np.arange(-5, 5, step=0.5))
+        plt.grid()
+        plt.show()
+        self.plot, = self.ax.plot(self.cache["X"], self.cache["Y"], '*', label='coordinate')
+        self.ax.figure.canvas.draw()
+
+    def update(self, coordinate_obj):
+
+        self.cache = coordinate_obj
+        self.plot.set_xdata(self.cache["X"])
+        self.plot.set_ydata(self.cache["Y"])
+        self.ax.draw_artist(self.plot)
+        self.ax.figure.canvas.draw()
+        plt.pause(0.0001)
+
+
+
+class GetRSSI:
+
+    def __init__(self, update):
+
+        self._update = update
+        pass
+
+    def update(self, json_obj):
+
+        if (json_obj == None) or ('rssi' not in json_obj):
+
+            return
+
+        self._update(json_obj['rssi'])
+
+
+
+def socketRun(run, port=8070):
+
+    s = socket.socket()
+    host = '0.0.0.0'
+
+    s.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
+    s.bind((host, port))
+    s.listen(5)
+
+    print(host, port)
+
+    c, addr = s.accept()
+
+    print('addr ', addr)
+
+    while True:
+
+        try:
+
+            data = c.recv(1024)
+
+            collections = extractjson(data)
+
+            for item in collections:
+
+                json_obj = extractData(item)
+
+                if json_obj == None:
+
+                    continue
+
+                run(json_obj)
+
+        except KeyboardInterrupt:
+
+                try:
+
+                    if c:
+                        c.close()
+
+                    s.close()
+                    exit(0)
+
+                except: pass
+
+                break
 ## end of file
+
+

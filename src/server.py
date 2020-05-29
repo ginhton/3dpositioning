@@ -14,7 +14,7 @@ from sys import argv, exit
 from json import loads
 from datetime import datetime
 
-from utils import CatchRssi, CatchRssis, KalmanFilter, AddrChecker, TaskQueue
+from utils import CatchRssi, CatchRssis, KalmanFilter, AddrChecker, TaskQueue, DrawRSSI, GetRSSI, DrawCoordinate, extractData, extractjson
 from positioning import WCLSimple, WCLN, WCLWindow, TriangulatorN
 
 
@@ -22,42 +22,6 @@ from positioning import WCLSimple, WCLN, WCLWindow, TriangulatorN
 FILENAME = None
 f = None
 
-
-# data processing
-def extractData(data):
-
-    json_obj = None
-
-    try:
-
-        json_obj = loads(data)
-
-        if not json_obj.__contains__("addr"):
-
-            return None
-
-        if not json_obj.__contains__("rssi"):
-
-            return None
-
-        json_obj['rssi'] = int(json_obj['rssi'])
-
-    except ValueError:
-
-        return None
-
-    return json_obj
-
-
-def extractjson(data):
-
-    if (len(data) < 50):
-
-        return [data]
-
-    else:
-
-        return data.decode('utf-8').replace('}{','}#{').split('#')
 
 
 # file processing
@@ -141,9 +105,10 @@ def socketRun(run):
                 break
 
 
-def show(data):
+def show(data, update):
 
     print(data)
+    update(data)
     return
 
 
@@ -169,37 +134,56 @@ def main():
 
         task_queue.append(addr_checker)
 
-        pos = TriangulatorN()
+        pos = TriangulatorN(3)
         # pos = WCLSimple()
-        pos.add('d8:a0:1d:60:fe:c6', {"x":-3, "y":0})
-        pos.add('d8:a0:1d:61:04:de', {"x":0, "y":3})
-        pos.add('d8:a0:1d:61:04:66', {"x":3, "y":0})
+
+        # draw coordinate
+        dc = DrawCoordinate()
+        # pos.add('d8:a0:1d:60:fe:c6', {"x":-4.33, "y":-2.5})
+        # pos.add('d8:a0:1d:61:04:de', {"x":4.33, "y":-2.5})
+        # pos.add('d8:a0:1d:61:04:66', {"x":0, "y":5})
+
+        # factor = 2, 3, 4
+        factor = 3
+        pos.add("24:6f:28:f4:91:76", {"x": -0.6 * factor, "y": 0 * factor})
+        pos.add("24:6f:28:de:78:72", {"x": 0.6 * factor, "y": 0 * factor})
+        pos.add("24:6f:28:de:6b:12", {"x": 0 * factor, "y": 0.6 * factor})
 
         task_queue.append(pos)
+        task_queue.append(dc)
 
         socketRun(task_queue.update)
 
     elif (mode == 'triangulator'):
 
-        x = TriangulatorN()
-        x.add('d8:a0:1d:60:fe:c6', {"x":-3, "y":0})
-        x.add('d8:a0:1d:61:04:de', {"x":0, "y":3})
-        x.add('d8:a0:1d:61:04:66', {"x":3, "y":0})
-        socketRun(x.update)
+        pos = TriangulatorN()
+        # x.add('d8:a0:1d:60:fe:c6', {"x":-3, "y":0})
+        # x.add('d8:a0:1d:61:04:de', {"x":0, "y":3})
+        # x.add('d8:a0:1d:61:04:66', {"x":3, "y":0})
+        # pos.add('d8:a0:1d:60:fe:c6', {"x":-4.33, "y":-2.5})
+        # pos.add('d8:a0:1d:61:04:de', {"x":4.33, "y":-2.5})
+        # pos.add('d8:a0:1d:61:04:66', {"x":0, "y":5})
+        factor = 5
+        pos.add("24:6f:28:f4:91:76", {"x": -0.6 * factor, "y": 0 * factor})
+        pos.add("24:6f:28:de:78:72", {"x": 0.6 * factor, "y": 0 * factor})
+        pos.add("24:6f:28:de:6b:12", {"x": 0 * factor, "y": 0.6 * factor})
+        socketRun(pos.update)
 
     elif (mode == 'WCLSimple'):
 
         # x = WCLSimple()
         # x = WCLN(number=2)
         x = WCLWindow()
-        x.add('d8:a0:1d:60:fe:c6', {"x":-3, "y":0})
-        x.add('d8:a0:1d:61:04:de', {"x":0, "y":3})
-        x.add('d8:a0:1d:61:04:66', {"x":3, "y":0})
+        x.add('d8:a0:1d:60:fe:c6', {"x":-4.33, "y":-2.5})
+        x.add('d8:a0:1d:61:04:de', {"x":4.33, "y":-2.5})
+        x.add('d8:a0:1d:61:04:66', {"x":0, "y":5})
         socketRun(x.update)
 
     elif (mode == 'show'):
+        dr = DrawRSSI()
+        cr = GetRSSI(dr.update)
 
-        socketRun(show)
+        socketRun(cr.update)
 
     elif (mode == 'rssi'):
 
@@ -208,31 +192,6 @@ def main():
         c = CatchRssis(10)
         c.prepare()
         socketRun(c.run)
-
-    elif (mode == 'test'):
-
-        kalman_filter = KalmanFilter()
-        values = []
-
-        def test_kalman_filter(data):
-
-            rssi = int(data['rssi'])
-            val = kalman_filter.update(rssi)
-            values.append(val)
-            # print(len(values))
-            print(val)
-
-            # if (len(values) >= 40):
-
-            #     values = values[1:]
-
-            plt.plot(values, color='r')
-            plt.pause(0.05)
-
-        plt.show()
-
-        socketRun(test_kalman_filter)
-
 
     else:
 

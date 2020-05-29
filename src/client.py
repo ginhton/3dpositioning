@@ -12,9 +12,20 @@ from json import loads
 f = None
 
 # receive rssi from three addresses
-filename = '../data/experiment1/2019-06-07_11:05:09/2019-06-07 11:01:23.517382.txt'
+# filename = '../data/experiment1/2019-06-07_11:05:09/2019-06-07 11:01:23.517382.txt'
 
-sleep_interval = 0.03
+# [3,3]
+# filename = "../data/experiment9/2019-07-11 09:30:47.473290.txt"
+
+# [-3,3]
+# filename = "../data/experiment9/2019-07-11 09:32:37.272264.txt"
+
+# [-4.33,-2.5] -> [4.33, -2.5] -> [0,5] -> [-4.33, -2.5]
+# filename = "../data/experiment9/2019-07-11 09:34:06.042959.txt"
+
+# experiment 11
+filename ="../data/experiment11/2019-07-27 10:40:07.109782.txt"
+sleep_interval = 0.06
 
 def openFile(filename):
     global f

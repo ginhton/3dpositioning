@@ -78,7 +78,7 @@ class AnalyzeRssi:
 
     def _convariance(self, data):
 
-        return np.cov(data)
+        return float(np.cov(data))
 
 
 

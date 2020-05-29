@@ -14,28 +14,39 @@ class WCLSimple:
     def update(self, data):
         # obj = parseJSON(data)
         obj = data
+
         if 'error' in obj:
             return None
 
         addr = obj['addr']
+
         if addr not in self.cache:
+
             print("%s not in cache" % addr)
             return None
-        rssi = abs(int(obj['rssi']))
+
+        rssi = int(obj['rssi']) + 80
+
+        if (rssi < 0):
+
+            rssi = 0
+
         self.cache[addr]['rssi'] = rssi
 
         X, Y = 0, 0
         S = 0
+
         for addr in self.cache:
+
             X += self.cache[addr]['rssi'] * self.cache[addr]['coords']['x']
             Y += self.cache[addr]['rssi'] * self.cache[addr]['coords']['y']
             S += self.cache[addr]['rssi']
+
         X = X / S
         Y = Y / S
 
         print(X, Y)
         return {"X": X, "Y": Y}
-
 
 
 class WCLWindow:
@@ -73,7 +84,7 @@ class WCLWindow:
             print("%s not in cache" % addr)
             return None
 
-        rssi = abs(int(obj['rssi']))
+        rssi = abs(int(obj['rssi'])) - 40
         self.cache[addr]['rssi'].append(rssi)
 
         self.cnt += 1
@@ -139,7 +150,7 @@ class WCLN:
             print("%s not in cache" % addr)
             return None
 
-        rssi = abs(int(obj['rssi']))
+        rssi = abs(int(obj['rssi'])) - 40
         self.cache[addr]['rssi'].append(rssi)
 
         check = False
@@ -171,7 +182,7 @@ class WCLN:
             X = X / S
             Y = Y / S
 
-            print(X, Y)
+            # print(X, Y)
             return {"X":X, "Y":Y}
 
         else:
@@ -242,6 +253,7 @@ class TriangulatorN:
 
                 avg = sum(self.cache[addr]['rssi']) / len(self.cache[addr]['rssi'])
                 d.append({"distance": rssi2DistanceCSDN(avg), "addr": addr})
+                # d.append({"distance": rssi2DistanceGithub(avg), "addr": addr})
                 self.cache[addr]['rssi'] = []
 
             X, Y = self.triangulate(d)
@@ -264,6 +276,10 @@ class TriangulatorN:
         p0_y = self.cache[d[0]['addr']]['coords']['y']
         p1_y = self.cache[d[1]['addr']]['coords']['y']
         p2_y = self.cache[d[2]['addr']]['coords']['y']
+
+        print('distance %f, coords (%d, %d)' % (d0, p0_x, p0_y))
+        print('distance %f, coords (%d, %d)' % (d1, p1_x, p1_y))
+        print('distance %f, coords (%d, %d)' % (d2, p2_x, p2_y))
 
         a = p0_x-p2_x
         b = p0_y-p2_y

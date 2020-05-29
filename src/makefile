@@ -21,6 +21,9 @@ show: server.py
 rssi: server.py
 	./server.py 8070 rssi
 
+single: single.py
+	python single.py 8070
+
 cli: client.py
 	./client.py 8070
 

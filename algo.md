@@ -6,6 +6,7 @@
     power = (abs(rssi)- A)/(10.0 * n)
     distance = math.pow(10, power)
 ```
+
 ## distance - 2
 ```javascript
 // Based on http://stackoverflow.com/a/20434019
